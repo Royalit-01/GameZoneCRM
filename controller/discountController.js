@@ -11,7 +11,7 @@ exports.createDiscount = async (req, res) => {
     res.status(400).json({ error: err.message });
   }
 };
-
+// 
 exports.getTodaysDiscount = async (req, res) => {
   try {
     const today = new Date();
