@@ -1,5 +1,5 @@
 const Discount = require("../models/Discount"); // Import the Discount model
-const Coupon = require("../models/coupon"); // Assuming you have a Coupon model
+const Coupon = require("../models/Coupon"); // Assuming you have a Coupon model
 
 // Create new discount
 exports.createDiscount = async (req, res) => {
