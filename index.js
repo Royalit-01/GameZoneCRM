@@ -31,7 +31,7 @@ app.use('/api/admin/discounts', require('./router/discountRoutes'));
 app.use('/api/orders', require('./router/orderRoutes'));
 app.use('/api/admindashboard',require('./router/AdminDashboardRoute'))
 
-// Start the server and listen for incoming requests on the specified port
+// Start the server and listen for incoming requests on the specified portt
 app.listen(PORT, () => {
   console.log(`Server is running successfully on http://localhost:${PORT}`);
 });
