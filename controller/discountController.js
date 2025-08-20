@@ -2,15 +2,7 @@ const Discount = require("../models/Discount"); // Import the Discount model
 const Coupon = require("../models/Coupon"); // Assuming you have a Coupon model
 
 // Get all discounts
-exports.getDiscounts = async (req, res) => {
-  try {
-    const discounts = await Discount.find().sort({ createdAt: -1 });
-    res.status(200).json(discounts);
-  } catch (err) {
-    console.error('Error in getDiscounts:', err);
-    res.status(500).json({ error: 'Error fetching discounts bngjhgj' });
-  }
-};
+
 
 // Create new discount
 exports.createDiscount = async (req, res) => {
@@ -19,7 +11,7 @@ exports.createDiscount = async (req, res) => {
     await discount.save();
     res.status(201).json({ message: "Discount saved successfully", discount });
   } catch (err) {
-    res.status(400).json({ error: err.message , "dsfgs"});
+    res.status(400).json({ error: err.message });
   }
 };
 // 
@@ -52,7 +44,8 @@ exports.getTodaysDiscount = async (req, res) => {
 // Get all discounts
 exports.getDiscounts = async (req, res) => {
   try {
-    const discounts = await Discount.find();
+    const discounts = await Discount.find({}); 
+
     res.json(discounts);
   } catch (err) {
     res.status(500).json({ error: err.message });
