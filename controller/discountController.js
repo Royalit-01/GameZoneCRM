@@ -44,10 +44,14 @@ exports.getTodaysDiscount = async (req, res) => {
 // Get all discounts
 exports.getDiscounts = async (req, res) => {
   try {
-    const discounts = await Discount.find({}); 
-
-    res.json(discounts);
+    const discounts = await Discount.find({}).sort({ createdAt: -1 }).lean();
+    if (!discounts) {
+      return res.status(404).json({ message: 'No discounts found' });
+    }
+    console.log('Found discounts:', discounts); // Debug log
+    res.status(200).json(discounts);
   } catch (err) {
+    console.error('Error in getDiscounts:', err); // Debug log
     res.status(500).json({ error: err.message });
   }
 };
