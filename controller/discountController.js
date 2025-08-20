@@ -19,7 +19,7 @@ exports.createDiscount = async (req, res) => {
     await discount.save();
     res.status(201).json({ message: "Discount saved successfully", discount });
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    res.status(400).json({ error: err.message , "dsfgs"});
   }
 };
 // 
