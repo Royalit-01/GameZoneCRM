@@ -1,6 +1,17 @@
 const Discount = require("../models/Discount"); // Import the Discount model
 const Coupon = require("../models/Coupon"); // Assuming you have a Coupon model
 
+// Get all discounts
+exports.getDiscounts = async (req, res) => {
+  try {
+    const discounts = await Discount.find({}).sort({ createdAt: -1 });
+    res.status(200).json(discounts);
+  } catch (err) {
+    console.error('Error in getDiscounts:', err);
+    res.status(500).json({ error: 'Error fetching discounts' });
+  }
+};
+
 // Create new discount
 exports.createDiscount = async (req, res) => {
   try {
