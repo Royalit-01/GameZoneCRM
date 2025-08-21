@@ -29,7 +29,7 @@ app.use('/api/ledgers', require('./router/ledgerRouter'));
 app.use('/api/admin', require('./router/adminRoute'));
 app.use('/api/admin/discounts', require('./router/discountRoutes'));
 app.use('/api/orders', require('./router/orderRoutes'));
-app.use('/api/admindashboard',require('./router/adminDashboardRoute'))
+app.use('/api/admin/dashboard',require('./router/adminDashboardRoute'))
 
 // Start the server and listen for incoming requests on the specified portt
 app.listen(PORT, () => {
