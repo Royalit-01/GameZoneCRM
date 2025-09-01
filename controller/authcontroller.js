@@ -5,9 +5,11 @@ const Store = require("../models/Store");
 
 exports.login = async (req, res) => {
   const { phoneNumber, password } = req.body;
+  console.log(phoneNumber);
 
   try {
     const staff = await Staff.findOne({ number: phoneNumber });
+    console.log("Staff found:", staff);
 
     if (!staff || staff.password !== password) {
       return res.status(401).json({ message: "Invalid credentials" });

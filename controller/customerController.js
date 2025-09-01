@@ -4,6 +4,7 @@ const CustomerLedger = require("../models/ledger");
 const SnacksAndDrinks = require("../models/SnacksAndDrink"); // Adjust path as needed
 const logActivity = require("../utils/logActivity");
 const Store = require("../models/Store");
+const Payment = require("../models/Payment");
 
 exports.addCustomer = async (req, res) => {
   try {
@@ -24,11 +25,13 @@ exports.addCustomer = async (req, res) => {
       discount,
       remainingAmount,
       couponDetails,
+      onlineAmount,
+      cashAmount,
     } = req.body;
     console.log("Received booking data:", req.body);
 
     // Basic validation
-    if (!name || !phone || !screen || !time || total_amount === undefined) {
+    if (!name || !phone  || total_amount === undefined) {
       return res.status(400).json({
         message:
           "Missing required fields: name, phone, screen, time, or total_amount",
@@ -56,6 +59,14 @@ exports.addCustomer = async (req, res) => {
       couponDetails,
     });
     await customer.save();
+
+    const paymentIn = new Payment({
+      orderId: customer._id,
+      onlineAmount,
+      cashAmount,
+    });
+    await paymentIn.save();
+
 
     // ✅ Log the "create order" activity
     await logActivity({
