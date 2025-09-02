@@ -4,6 +4,7 @@
 const { constants } = require("fs/promises");
 const Customer = require("../models/customer");
 const CustomerLedger = require("../models/ledger");
+const Payment = require("../models/Payment");
 const Staff = require("../models/staff");
 const SnacksAndDrink = require("../models/SnacksAndDrink");
 const AdminCredentials = require("../models/AdminCredentials");
@@ -224,9 +225,32 @@ exports.getAllCustomers = async (req, res) => {
       };
     }
 
-    const customers = await Customer.find(query);
+    // Get all customers matching the query
+    const customers = await Customer.find(query).lean();
 
-    res.status(200).json(customers);
+    // Fetch and add payment information for each customer
+    const customersWithPayments = await Promise.all(
+      customers.map(async (customer) => {
+        // Get all payments for this customer
+        const payments = await Payment.find({ customerId: customer._id });
+        
+        // Calculate total online and cash amounts
+        const totals = payments.reduce((acc, payment) => ({
+          totalOnline: acc.totalOnline + (payment.onlineAmount || 0),
+          totalCash: acc.totalCash + (payment.cashAmount || 0)
+        }), { totalOnline: 0, totalCash: 0 });
+
+        // Return customer with payment information
+        return {
+          ...customer,
+          onlineAmount: totals.totalOnline,
+          cashAmount: totals.totalCash,
+          finalTotalAmount: totals.totalOnline + totals.totalCash
+        };
+      })
+    );
+
+    res.status(200).json(customersWithPayments);
   } catch (error) {
     res
       .status(500)
