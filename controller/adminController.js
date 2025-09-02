@@ -1,3 +1,5 @@
+// GET /api/admin/attendance?date=YYYY-MM-DD
+
 // controllers/customerController.js
 const { constants } = require("fs/promises");
 const Customer = require("../models/customer");
@@ -33,6 +35,20 @@ exports.loginAdmin = async (req, res) => {
   } catch (error) {
     console.error("Error logging in admin:", error);
     return res.status(500).json({ message: "Server error logging in admin" });
+  }
+};
+
+exports.getAttendanceByDate = async (req, res) => {
+  try {
+    const { date } = req.query;
+    if (!date) {
+      return res.status(400).json({ message: "Date is required in query (?date=YYYY-MM-DD)" });
+    }
+    const records = await Attendance.find({ date });
+    res.status(200).json(records);
+  } catch (error) {
+    console.error("🔥 Error fetching attendance by date:", error);
+    res.status(500).json({ message: "Server error fetching attendance", error: error.message });
   }
 };
 

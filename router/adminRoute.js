@@ -1,3 +1,4 @@
+// Get attendance by date
 // routes/customerRoutes.js
 const express = require("express");
 const router = express.Router();
@@ -30,9 +31,12 @@ const {
   deleteStore,
 } = require("../controller/storeController");
 const { loginAdmin } = require("../controller/adminController");
+const { getAttendanceByDate } = require("../controller/adminController");
+
 
 // Admin Routes
 router.post("/login", loginAdmin);
+router.get("/attendance", getAttendanceByDate);
 
 //customer routes
 router.get("/active", getAllCustomers);
