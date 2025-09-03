@@ -61,7 +61,7 @@ exports.addCustomer = async (req, res) => {
     await customer.save();
 
     const paymentIn = new Payment({
-      orderId: customer._id,
+      customerId: customer._id,
       onlineAmount,
       cashAmount,
     });
@@ -232,3 +232,71 @@ exports.getActiveScreens = async (req, res) => {
     res.status(500).json({ error: "Failed to fetch active screens" });
   }
 };
+
+exports.getAllowedScreens = async (req, res) => {
+  try {
+    const screens = req.query.screens; // could be string or array
+    const screenList = Array.isArray(screens) ? screens : [screens];
+    const store = req.user.store;
+
+    // Fetch active bookings for the given screens and store
+    const bookings = await Customer.find({
+      screen: { $in: screenList },
+      status: "active",
+      store: store,
+    }).lean();
+
+    // Fetch all payments for these bookings using orderId
+    const payments = await Payment.find({
+      orderId: { $in: bookings.map(b => b._id) }
+    }).lean();
+
+    // Create a map for quick lookup
+    const paymentMap = {};
+    payments.forEach(payment => {
+      paymentMap[payment.orderId.toString()] = payment;
+    });
+
+    // Attach payment details to each booking
+    bookings.forEach(booking => {
+      const payment = paymentMap[booking._id.toString()];
+      if (payment) {
+        booking.onlineAmount = payment.onlineAmount;
+        booking.cashAmount = payment.cashAmount;
+      }
+    });
+    console.log('bookings', bookings)
+    res.json(bookings);
+  } catch (err) {
+    console.error("Error fetching active bookings:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+
+//  Get log activity 
+exports.getLogActivity = async (req, res) => {
+  const { action, details } = req.body;
+
+  const employee = req.user?.username || req.user?.name || "Unknown";
+  const store = req.user?.store || "Unknown";
+  const ip = req.ip;
+  const userAgent = req.headers["user-agent"];
+
+  try {
+    await logActivity({
+      employee,
+      action,
+      details,
+      store,
+      ip,
+      userAgent,
+    });
+
+    res.status(200).json({ message: "Activity logged" });
+  } catch (err) {
+    res
+      .status(500)
+      .json({ message: "Failed to log activity", error: err.message });
+  }
+}
