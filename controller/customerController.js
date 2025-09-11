@@ -1,10 +1,52 @@
 const Customer = require("../models/customer"); // Adjust path as needed
 const CustomerLedger = require("../models/ledger");
+const GameSession = require("../models/GameSession");
+
 
 const SnacksAndDrinks = require("../models/SnacksAndDrink"); // Adjust path as needed
 const logActivity = require("../utils/logActivity");
 const Store = require("../models/Store");
 const Payment = require("../models/Payment");
+
+
+// Helper function to calculate and update total amount
+const updateCustomerTotalAmount = async (customerId) => {
+  // Get all game sessions for this customer
+  const sessions = await GameSession.find({ customerId });
+  
+  if (sessions.length === 0) {
+    return 0; // Return 0 if no sessions found
+  }
+
+  // Calculate sum of all session amounts
+  const totalGameAmount = sessions.reduce((sum, session) => 
+    sum + (session.amount || 0), 0);
+    
+  // Calculate mean amount
+  const meanAmount = totalGameAmount / sessions.length;
+  
+  // Get customer to add additional costs
+  const customer = await Customer.findById(customerId);
+  if (!customer) {
+    throw new Error('Customer not found');
+  }
+
+  // Calculate non-playing members cost (₹20 per person)
+  const NON_PLAYING_RATE = 20; // ₹20 per non-playing member
+  const nonPlayingCost = customer.nonPlayingMembers ? 
+    NON_PLAYING_RATE * customer.nonPlayingMembers : 0;
+  
+  // Total is mean game amount plus additional costs
+  const newTotal = meanAmount + 
+    (customer.snacks || 0) + 
+    (customer.drink || 0) + 
+    nonPlayingCost;
+  
+  // Update customer's total_amount  
+  await Customer.findByIdAndUpdate(customerId, { total_amount: newTotal });
+  
+  return newTotal;
+};
 
 exports.addCustomer = async (req, res) => {
   try {
@@ -38,6 +80,7 @@ exports.addCustomer = async (req, res) => {
       });
     }
 
+    // Create customer first
     const customer = new Customer({
       name,
       phone,
@@ -48,17 +91,32 @@ exports.addCustomer = async (req, res) => {
       drink,
       players,
       nonPlayingMembers,
-      extended_amount: 0, // default or calculate if needed
-      paid: paid, // match schema
-      total_amount,
+      extended_amount: 0,
+      paid: paid,
+      total_amount: paid + (snacks || 0) + (drink || 0) + 
+        (nonPlayingMembers ? 20 * nonPlayingMembers : 0),  // Initial total with ₹20 per non-playing member
       store,
       wallet: 0,
       payment,
-      discount: discount || "not available", // Add discount field if provided
+      discount: discount || "not available",
       remainingAmount,
       couponDetails,
     });
     await customer.save();
+
+    // Create game session with customer ID
+    const gameSession = new GameSession({
+      customerId: customer._id,  // Now we have the customer ID
+      game: game,
+      players: players,
+      duration: time,
+      amount: paid,
+      screen: screen,
+      startTime: new Date(),
+      extendedTime: 0,
+      extendedAmount: 0
+    });
+    await gameSession.save();
 
     const paymentIn = new Payment({
       customerId: customer._id,
@@ -66,7 +124,6 @@ exports.addCustomer = async (req, res) => {
       cashAmount,
     });
     await paymentIn.save();
-
 
     // ✅ Log the "create order" activity
     await logActivity({
@@ -94,7 +151,12 @@ exports.addCustomer = async (req, res) => {
       userAgent: req.headers["user-agent"],
     });
 
-    res.status(201).json({ message: "Booking saved successfully", customer });
+    res.status(201).json({ 
+      message: "Booking saved successfully", 
+      customer,
+      gameSession,
+      payment: paymentIn
+    });
   } catch (error) {
     console.error("Error saving booking:", error);
     res
@@ -130,6 +192,105 @@ exports.getAllCustomers = async (req, res) => {
   }
 };
 
+exports.updateCustomerWithGameSession = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { 
+      players,
+      duration,
+      amount,
+      game,
+      screen,
+      extended_time = 0,
+      extended_amount = 0
+    } = req.body;
+
+    // Find existing customer
+    const existingCustomer = await Customer.findById(id);
+    if (!existingCustomer) {
+      return res.status(404).json({ message: "Customer not found" });
+    }
+
+    // Create new game session
+    const gameSession = new GameSession({
+      customerId: id,
+      game: game || existingCustomer.game,
+      players,
+      duration,
+      amount,
+      screen: screen || existingCustomer.screen,
+      startTime: new Date(),
+      extendedTime: extended_time,
+      extendedAmount: extended_amount
+    });
+    await gameSession.save();
+
+    // Calculate and update final total amount using helper function
+    const finalTotal = await updateCustomerTotalAmount(id);
+
+    // Update customer details
+    const updateData = {
+      players,
+      duration: (existingCustomer.duration || 0) + duration,
+      total_amount: finalTotal,  // Using the calculated mean total
+      extended_time: (existingCustomer.extended_time || 0) + extended_time,
+      extended_amount: (existingCustomer.extended_amount || 0) + extended_amount
+    };
+
+    const updatedCustomer = await Customer.findByIdAndUpdate(
+      id,
+      updateData,
+      { new: true }
+    );
+
+    // Log the update activity
+    await logActivity({
+      employee: req.user?.name || "Unknown",
+      action: "update booking with game session",
+      details: {
+        customerId: id,
+        previousPlayers: existingCustomer.players,
+        newPlayers: players,
+        previousAmount: existingCustomer.total_amount,
+        newAmount: updatedCustomer.total_amount,
+        sessionDetails: {
+          duration,
+          amount,
+          extended_time,
+          extended_amount
+        }
+      },
+      store: req.user?.store || existingCustomer.store,
+      ip: req.ip,
+      userAgent: req.headers["user-agent"],
+    });
+
+    res.status(200).json({
+      message: "Customer and game session updated successfully",
+      customer: updatedCustomer,
+      gameSession,
+      priceBreakdown: {
+        previousTotal: existingCustomer.total_amount,
+        newTotal: finalTotal,
+        sessionAmount: amount,
+        extendedAmount: extended_amount,
+        additionalCharges: {
+          snacks: existingCustomer.snacks || 0,
+          drinks: existingCustomer.drink || 0
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error("Error updating customer with game session:", error);
+    res.status(500).json({
+      message: "Error updating customer details",
+      error: error.message,
+    });
+  }
+};
+
+// Keep the original updateCustomer for other updates
 exports.updateCustomer = async (req, res) => {
   try {
     const { id } = req.params;

@@ -1,6 +1,15 @@
 const Order = require('../models/Order');
 const { v4: uuidv4 } = require('uuid');
 
+// ***********//
+
+//It is for cafe order not for game order 
+// for game order you will have to visit customerController.js  file  
+
+
+//************//
+
+
 // Get all orders or by status
 exports.getOrders = async (req, res) => {
   try {

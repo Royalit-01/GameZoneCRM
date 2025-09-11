@@ -7,7 +7,8 @@ const {
   getStoreByNumber,
   getActiveScreens,
   getAllowedScreens,
-  getLogActivity
+  getLogActivity,
+  updateCustomerWithGameSession
 } = require("../controller/customerController");
 const router = express.Router();
 const authMiddleware = require("../middleware/authMiddleware");
@@ -39,6 +40,9 @@ router.get("/all", authMiddleware, getAllCustomers);
 
 // Update customer details
 router.put("/update/:id", updateCustomer);
+
+// Update customer with game session
+router.put("/update-session/:id", updateCustomerWithGameSession);
 
 // Update only customer status
 router.patch("/status/:id", updateCustomerStatus);
